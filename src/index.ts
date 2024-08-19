@@ -27,48 +27,48 @@ function decodeQueryString(queryString: string) {
   return decodedPairs.join("&");
 }
 
-const query_populate_array_notation = qs.stringify({
-  populate: {
-    dynamic_zone: {
-      on: {
-        ["components-page.page-gallery"]: {
-          populate: {
-            item: {
-              fields: ["title"],
-              populate: {
-                media: {
-                  fields: ["url", "alternativeText"],
-                  filters: { id: { $eq: 31 } },
-                },
-              },
-              filters: {
-                category: { id: { $eq: 26 } },
-              },
-              // pagination: {
-              //   pageSize: 1,
-              //   page: 1,
-              // },
-              // start: 0,
-              // limit: 1,
-            },
-          },
-          // filters: {
-          //   item: {
-          //     id: { $eq: 26 },
-          //   },
-          // item: {
-          //   media: {
-          //     data: { id: { $eq: 31 } },
-          //   },
-          // },
-          // },
-        },
-      },
-    },
-  },
-});
+// const query_populate_array_notation = qs.stringify({
+//   populate: {
+//     dynamic_zone: {
+//       on: {
+//         ["components-page.page-gallery"]: {
+//           populate: {
+//             item: {
+//               fields: ["title"],
+//               populate: {
+//                 media: {
+//                   fields: ["url", "alternativeText"],
+//                   filters: { id: { $eq: 31 } },
+//                 },
+//               },
+//               filters: {
+//                 category: { id: { $eq: 26 } },
+//               },
+//               // pagination: {
+//               //   pageSize: 1,
+//               //   page: 1,
+//               // },
+//               // start: 0,
+//               // limit: 1,
+//             },
+//           },
+//           // filters: {
+//           //   item: {
+//           //     id: { $eq: 26 },
+//           //   },
+//           // item: {
+//           //   media: {
+//           //     data: { id: { $eq: 31 } },
+//           //   },
+//           // },
+//           // },
+//         },
+//       },
+//     },
+//   },
+// });
 
-const QUERY_3 = decodeQueryString(query_populate_array_notation);
+// const QUERY_3 = decodeQueryString(query_populate_array_notation);
 
 console.log(QUERY_3);
 
@@ -204,7 +204,132 @@ const example3 = {
   },
 };
 
-const updatedFilters = replaceFilterOperators(filters);
-const testExample1 = replaceFilterOperators(example1);
-const testExample2 = replaceFilterOperators(example2);
-const testExample3 = replaceFilterOperators(example3);
+export type PopulateFilterParams<T> =
+  | string
+  | string[]
+  | { [key: string]: T | string | string[] };
+
+type BasicFilterOperatorKeys = keyof typeof BasicFilterOperators;
+
+type AdvancedInnerFilter = {
+  [key: string]: {
+    [operator in BasicFilterOperatorKeys]?: string | number | boolean;
+  };
+};
+
+type AdvancedFilterParams = {
+  [operator in keyof typeof AdvancedFilterOperators]?: Array<AdvancedInnerFilter>;
+};
+
+export type OuterFilterParams = FilterParams | AdvancedFilterParams;
+
+export interface InnerPopulateParams {
+  sort?: { [key: string]: "asc" | "desc" };
+  filters?: OuterFilterParams;
+  populate?: PopulateFilterParams<InnerPopulateParams>;
+  fields?: string[];
+}
+
+export interface PopulateDynamicZone {
+  dynamic_zone: {
+    on: PopulateFilterParams<InnerPopulateParams>;
+  };
+}
+
+interface InteractiveQueryBuilderParams {
+  sort?: { [key: string]: "asc" | "desc" };
+  filters?: OuterFilterParams;
+  populate?: PopulateFilterParams<InnerPopulateParams> | PopulateDynamicZone;
+  fields?: string[];
+  pagination?: {
+    pageSize?: number;
+    page?: number;
+    start?: number;
+    limit?: number;
+    withCount?: boolean;
+  };
+  publicationState?: "live" | "preview";
+  dynamicQuery?: string;
+}
+
+const replaceFilterOperatorInPopulate = (
+  populate: PopulateFilterParams<InnerPopulateParams> | PopulateDynamicZone
+) => {
+  const result: PopulateFilterParams<InnerPopulateParams> = {};
+
+  // check if is string
+  if (typeof populate !== "object") return result;
+
+  // check if its an array
+  if (Array.isArray(populate)) return result;
+
+  // if is an object then to the process of chaging the keys of the filters
+  Object.entries(populate).forEach(([key, value]) => {
+    if (key === "filters") {
+      result[key] = replaceFilterOperators(value as FilterParams);
+    } else {
+      result[key] = replaceFilterOperatorInPopulate(
+        value as PopulateFilterParams<InnerPopulateParams>
+      );
+    }
+  });
+
+  return result;
+};
+
+const testPopulate1: PopulateFilterParams<InnerPopulateParams> = {
+  item: {
+    fields: ["title"],
+    populate: {
+      media: {
+        fields: ["url", "alternativeText"],
+        filters: { id: { $eq: 31 } },
+      },
+    },
+    filters: {
+      category: { id: { $eq: 26 } },
+      or: [
+        {
+          date: {
+            greaterThan: "2020-01-01",
+          },
+        },
+        {
+          date: {
+            isNull: "2020-01-02",
+          },
+        },
+      ],
+    },
+  },
+};
+
+const testPopulate2: InteractiveQueryBuilderParams = {
+  
+};
+
+const queryString = qs.stringify(testPopulate2);
+
+const queryDecoded = decodeQueryString(queryString);
+
+console.log(queryDecoded);
+console.log(queryString);
+// const QUERY_3 = decodeQueryString(query_populate_array_notation);
+
+// decodeQueryString
+
+// const example1Populate = replaceFilterOperatorInPopulate(testPopulate1);
+
+// if (testPopulate2.populate) {
+//   const example2Populate = replaceFilterOperatorInPopulate(
+//     testPopulate2.populate
+//   );
+
+//   testPopulate2.populate = example2Populate;
+// }
+// console.log(example1Populate);
+
+// const updatedFilters = replaceFilterOperators(filters);
+// const testExample1 = replaceFilterOperators(example1);
+// const testExample2 = replaceFilterOperators(example2);
+// const testExample3 = replaceFilterOperators(example3);
