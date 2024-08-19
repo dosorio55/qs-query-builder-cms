@@ -122,3 +122,139 @@ const QUERY_3 = decodeQueryString(query_populate_array_notation);
 console.log(QUERY_3);
 
 //http://localhost:1337/api/global?populate=*
+
+
+interface FilterParams {
+  [key: string]: any;
+}
+
+export const BasicFilterOperators = {
+  equals: "$eq",
+  equalsCaseInsensitive: "$eqi",
+  notEquals: "$ne",
+  notEqualsCaseInsensitive: "$nei",
+  lessThan: "$lt",
+  lessThanOrEqual: "$lte",
+  greaterThan: "$gt",
+  greaterThanOrEqual: "$gte",
+  contains: "$contains",
+  doesNotContain: "$notContains",
+  containsCaseInsensitive: "$containsi",
+  doesNotContainCaseInsensitive: "$notContainsi",
+  isNull: "$null",
+  isNotNull: "$notNull",
+  startsWith: "$startsWith",
+  startsWithCaseInsensitive: "$startsWithi",
+  endsWith: "$endsWith",
+  endsWithCaseInsensitive: "$endsWithi",
+};
+
+export const AdvancedFilterOperators = {
+  or: "$or",
+  and: "$and",
+  not: "$not",
+};
+
+export const ArrayFilterOperators = {
+  between: "$between",
+  inArray: "$in",
+  notInArray: "$notIn",
+};
+
+const allOperators = {
+  ...BasicFilterOperators,
+  ...AdvancedFilterOperators,
+  ...ArrayFilterOperators,
+};
+
+const decodeKey = (key: string) => {
+  if (key in allOperators)
+    return allOperators[key as keyof typeof allOperators];
+
+  return key;
+};
+
+function replaceFilterOperators(filters: FilterParams): FilterParams {
+  const result: FilterParams = {};
+
+  for (const key in filters) {
+    if (Object.prototype.hasOwnProperty.call(filters, key)) {
+      const value = filters[key];
+
+      if (typeof value === "object" && !Array.isArray(value)) {
+        // Recursively apply the function to nested objects
+        result[decodeKey(key)] = replaceFilterOperators(value);
+      } else if (Array.isArray(value)) {
+        // Recursively apply the function to each item in the array if it's an object
+        result[decodeKey(key)] = value.map((item) =>
+          typeof item === "object" && item !== null
+            ? replaceFilterOperators(item)
+            : item
+        );
+      } else {
+        // Replace the operator if it's found in the operator lists
+
+        const newKey = allOperators[key as keyof typeof allOperators] || key;
+        result[newKey] = value;
+      }
+    }
+  }
+
+  return result;
+}
+
+// Example usage
+const filters: FilterParams = {
+  equals: { someField: "someValue" },
+  and: [
+    { contains: { anotherField: "anotherValue" } },
+    { inArray: ["value1", "value2"] },
+  ],
+};
+
+const example1 = {
+  filters: {
+    chef: {
+      restaurants: {
+        stars: {
+          equals: 5,
+        },
+      },
+    },
+  },
+};
+
+const example2 = {
+  filters: {
+    or: [
+      {
+        date: {
+          equals: "2020-01-01",
+        },
+      },
+      {
+        date: {
+          equals: "2020-01-02",
+        },
+      },
+    ],
+    author: {
+      name: {
+        equals: "Kai doe",
+      },
+    },
+  },
+};
+
+const example3 = {
+  filters: {
+    id: {
+      inArray: [3, 6, 8],
+    },
+  },
+};
+
+const updatedFilters = replaceFilterOperators(filters);
+const testExample1 = replaceFilterOperators(example1);
+const testExample2 = replaceFilterOperators(example2);
+const testExample3 = replaceFilterOperators(example3);
