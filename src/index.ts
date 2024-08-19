@@ -1,14 +1,14 @@
-const qs = require("qs");
+import qs from "qs";
 
 const CONTENT_TYPE = "articles";
 const BASE_URL = `http://localhost:1337/api/${CONTENT_TYPE}?`;
 
-function decodeQueryString(queryString) {
+function decodeQueryString(queryString: string) {
   // Split the query string into individual key-value pairs
   const pairs = queryString.split("&");
 
   // Initialize an array to hold the decoded parameters
-  const decodedPairs = [];
+  const decodedPairs: string[] = [];
 
   // Iterate over each pair
   pairs.forEach((pair) => {
@@ -27,62 +27,13 @@ function decodeQueryString(queryString) {
   return decodedPairs.join("&");
 }
 
-// const query_params_1 = qs.stringify({});
-
-// const QUERY_1 = BASE_URL + query_params_1;
-
-// const query_params_wildcard = qs.stringify({
-//   populate: "*",
-// });
-
-// const QUERY_2 = BASE_URL + query_params_wildcard;
-
-// const query_populate_array_notation = qs.stringify({
-//   populate: ["dynamic_zone.item"],
-// });
-
-const populateOnlyItemObj = {
-  populate: {
-    dynamic_zone: {
-      on: {
-        ["components-page.page-gallery"]: {
-          populate: { item: { fields: ["title"] } },
-        },
-      },
-    },
-  },
-};
-
-const populateItemAndMediaObj = {
-  populate: {
-    dynamic_zone: {
-      on: {
-        ["components-page.page-gallery"]: {
-          populate: {
-            item: {
-              fields: ["title"],
-              populate: { media: { fields: ["url", "alternativeText"] } },
-              // pagination: {
-              //   pageSize: 1,
-              //   page: 1,
-              // },
-              start: 0,
-              limit: 1,
-            },
-          },
-        },
-      },
-    },
-  },
-};
-
 const query_populate_array_notation = qs.stringify({
   populate: {
     dynamic_zone: {
       on: {
         ["components-page.page-gallery"]: {
           populate: {
-            item: { 
+            item: {
               fields: ["title"],
               populate: {
                 media: {
@@ -122,7 +73,6 @@ const QUERY_3 = decodeQueryString(query_populate_array_notation);
 console.log(QUERY_3);
 
 //http://localhost:1337/api/global?populate=*
-
 
 interface FilterParams {
   [key: string]: any;

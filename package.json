@@ -1,15 +1,18 @@
 {
-  "name": "test-url-node",
+  "name": "qs-query-builder-cms",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
+  "devDependencies": {
+    "@types/qs": "^6.9.15",
+    "typescript": "^5.5.4"
+  },
   "dependencies": {
     "qs": "^6.13.0"
   }
