@@ -1,83 +1,5 @@
 import qs from "qs";
 
-const CONTENT_TYPE = "articles";
-const BASE_URL = `http://localhost:1337/api/${CONTENT_TYPE}?`;
-
-function decodeQueryString(queryString: string) {
-  // Split the query string into individual key-value pairs
-  const pairs = queryString.split("&");
-
-  // Initialize an array to hold the decoded parameters
-  const decodedPairs: string[] = [];
-
-  // Iterate over each pair
-  pairs.forEach((pair) => {
-    // Split the pair into key and value
-    const [key, value] = pair.split("=");
-
-    // Decode the key and value
-    const decodedKey = decodeURIComponent(key);
-    const decodedValue = decodeURIComponent(value);
-
-    // Reconstruct the key-value pair and push it to the array
-    decodedPairs.push(`${decodedKey}=${decodedValue}`);
-  });
-
-  // Join all pairs back into a single query string
-  return decodedPairs.join("&");
-}
-
-// const query_populate_array_notation = qs.stringify({
-//   populate: {
-//     dynamic_zone: {
-//       on: {
-//         ["components-page.page-gallery"]: {
-//           populate: {
-//             item: {
-//               fields: ["title"],
-//               populate: {
-//                 media: {
-//                   fields: ["url", "alternativeText"],
-//                   filters: { id: { $eq: 31 } },
-//                 },
-//               },
-//               filters: {
-//                 category: { id: { $eq: 26 } },
-//               },
-//               // pagination: {
-//               //   pageSize: 1,
-//               //   page: 1,
-//               // },
-//               // start: 0,
-//               // limit: 1,
-//             },
-//           },
-//           // filters: {
-//           //   item: {
-//           //     id: { $eq: 26 },
-//           //   },
-//           // item: {
-//           //   media: {
-//           //     data: { id: { $eq: 31 } },
-//           //   },
-//           // },
-//           // },
-//         },
-//       },
-//     },
-//   },
-// });
-
-// const QUERY_3 = decodeQueryString(query_populate_array_notation);
-
-console.log(QUERY_3);
-
-//http://localhost:1337/api/global?populate=*
-
-interface FilterParams {
-  [key: string]: any;
-}
-
 export const BasicFilterOperators = {
   equals: "$eq",
   equalsCaseInsensitive: "$eqi",
@@ -111,105 +33,50 @@ export const ArrayFilterOperators = {
   notInArray: "$notIn",
 };
 
-const allOperators = {
-  ...BasicFilterOperators,
-  ...AdvancedFilterOperators,
-  ...ArrayFilterOperators,
-};
+const CONTENT_TYPE = "articles";
+const BASE_URL = `http://localhost:1337/api/${CONTENT_TYPE}?`;
 
-const decodeKey = (key: string) => {
-  if (key in allOperators)
-    return allOperators[key as keyof typeof allOperators];
+function decodeQueryString(queryString: string) {
+  // Split the query string into individual key-value pairs
+  const pairs = queryString.split("&");
 
-  return key;
-};
+  // Initialize an array to hold the decoded parameters
+  const decodedPairs: string[] = [];
 
-function replaceFilterOperators(filters: FilterParams): FilterParams {
-  const result: FilterParams = {};
+  // Iterate over each pair
+  pairs.forEach((pair) => {
+    // Split the pair into key and value
+    const [key, value] = pair.split("=");
 
-  for (const key in filters) {
-    if (Object.prototype.hasOwnProperty.call(filters, key)) {
-      const value = filters[key];
+    // Decode the key and value
+    const decodedKey = decodeURIComponent(key);
+    const decodedValue = decodeURIComponent(value);
 
-      if (typeof value === "object" && !Array.isArray(value)) {
-        // Recursively apply the function to nested objects
-        result[decodeKey(key)] = replaceFilterOperators(value);
-      } else if (Array.isArray(value)) {
-        // Recursively apply the function to each item in the array if it's an object
-        result[decodeKey(key)] = value.map((item) =>
-          typeof item === "object" && item !== null
-            ? replaceFilterOperators(item)
-            : item
-        );
-      } else {
-        // Replace the operator if it's found in the operator lists
+    // Reconstruct the key-value pair and push it to the array
+    decodedPairs.push(`${decodedKey}=${decodedValue}`);
+  });
 
-        const newKey = allOperators[key as keyof typeof allOperators] || key;
-        result[newKey] = value;
-      }
-    }
-  }
-
-  return result;
+  // Join all pairs back into a single query string
+  return decodedPairs.join("&");
 }
 
-// Example usage
-const filters: FilterParams = {
-  equals: { someField: "someValue" },
-  and: [
-    { contains: { anotherField: "anotherValue" } },
-    { inArray: ["value1", "value2"] },
-  ],
-};
-
-const example1 = {
-  filters: {
-    chef: {
-      restaurants: {
-        stars: {
-          equals: 5,
-        },
-      },
-    },
-  },
-};
-
-const example2 = {
-  filters: {
-    or: [
-      {
-        date: {
-          equals: "2020-01-01",
-        },
-      },
-      {
-        date: {
-          equals: "2020-01-02",
-        },
-      },
-    ],
-    author: {
-      name: {
-        equals: "Kai doe",
-      },
-    },
-  },
-};
-
-const example3 = {
-  filters: {
-    id: {
-      inArray: [3, 6, 8],
-    },
-  },
-};
-
-export type PopulateFilterParams<T> =
-  | string
-  | string[]
-  | { [key: string]: T | string | string[] };
-
 type BasicFilterOperatorKeys = keyof typeof BasicFilterOperators;
+
+type BasicFilterParams = {
+  [operator in BasicFilterOperatorKeys]?: string | number | boolean;
+};
+
+type ArrayFilterParams = {
+  inArray?: string[] | number[];
+  notInArray?: string[] | number[];
+  between?: [number, number] | [Date, Date];
+};
+
+type FilterOptionsParams = BasicFilterParams | ArrayFilterParams;
+
+export type FilterParams = {
+  [key: string]: FilterOptionsParams | FilterParams;
+};
 
 type AdvancedInnerFilter = {
   [key: string]: {
@@ -222,6 +89,11 @@ type AdvancedFilterParams = {
 };
 
 export type OuterFilterParams = FilterParams | AdvancedFilterParams;
+
+export type PopulateFilterParams<T> =
+  | string
+  | string[]
+  | { [key: string]: T | string | string[] };
 
 export interface InnerPopulateParams {
   sort?: { [key: string]: "asc" | "desc" };
@@ -252,10 +124,50 @@ interface InteractiveQueryBuilderParams {
   dynamicQuery?: string;
 }
 
+const allOperators = {
+  ...BasicFilterOperators,
+  ...AdvancedFilterOperators,
+  ...ArrayFilterOperators,
+};
+
+const decodeKey = (key: string) => {
+  if (key in allOperators)
+    return allOperators[key as keyof typeof allOperators];
+
+  return key;
+};
+
+const replaceFilterOperators = (filters: FilterParams) => {
+  const result: FilterParams = {};
+
+  for (const key in filters) {
+    if (Object.prototype.hasOwnProperty.call(filters, key)) {
+      const value = filters[key];
+
+      if (typeof value === "object" && !Array.isArray(value)) {
+        result[decodeKey(key)] = replaceFilterOperators(value as FilterParams);
+      } else if (Array.isArray(value)) {
+        result[decodeKey(key)] = value.map((item) =>
+          typeof item === "object" && item !== null
+            ? replaceFilterOperators(item)
+            : item
+        ) as unknown as FilterParams;
+      } else {
+        const newKey = allOperators[key as keyof typeof allOperators] || key;
+        result[newKey] = value as unknown as FilterParams;
+      }
+    }
+  }
+
+  return result;
+};
+
 const replaceFilterOperatorInPopulate = (
   populate: PopulateFilterParams<InnerPopulateParams> | PopulateDynamicZone
 ) => {
-  const result: PopulateFilterParams<InnerPopulateParams> = {};
+  const result:
+    | PopulateFilterParams<InnerPopulateParams>
+    | PopulateDynamicZone = {};
 
   // check if is string
   if (typeof populate !== "object") return result;
@@ -277,59 +189,52 @@ const replaceFilterOperatorInPopulate = (
   return result;
 };
 
-const testPopulate1: PopulateFilterParams<InnerPopulateParams> = {
-  item: {
-    fields: ["title"],
-    populate: {
-      media: {
-        fields: ["url", "alternativeText"],
-        filters: { id: { $eq: 31 } },
-      },
-    },
-    filters: {
-      category: { id: { $eq: 26 } },
-      or: [
-        {
-          date: {
-            greaterThan: "2020-01-01",
-          },
-        },
-        {
-          date: {
-            isNull: "2020-01-02",
-          },
-        },
+const example1: InteractiveQueryBuilderParams = {
+  fields: ["title", "slug", "description"],
+  filters: {
+    title: {
+      inArray: [
+        "Origen de la Asociación",
+        "Estatutos de la AsociaciónEstatutos",
       ],
+    },
+  },
+  populate: {
+    dynamic_zone: {
+      on: {
+        "components-page.page-gallery": {
+          fields: ["description"],
+          populate: {
+            item: {
+              filters: {
+                title: {
+                  contains: "test",
+                },
+              },
+              populate: {
+                media: {
+                  fields: ["url", "alternativeText"],
+                },
+              },
+            },
+          },
+        },
+      },
     },
   },
 };
 
-const testPopulate2: InteractiveQueryBuilderParams = {
-  
-};
+if (example1.filters) {
+  example1.filters = replaceFilterOperators(example1.filters as FilterParams);
+  example1.populate = replaceFilterOperatorInPopulate(
+    example1.populate as PopulateFilterParams<InnerPopulateParams>
+  );
 
-const queryString = qs.stringify(testPopulate2);
+  const query1 = qs.stringify(example1);
 
-const queryDecoded = decodeQueryString(queryString);
+  const decodedQuery = decodeQueryString(query1);
 
-console.log(queryDecoded);
-console.log(queryString);
-// const QUERY_3 = decodeQueryString(query_populate_array_notation);
+  console.log(decodedQuery);
 
-// decodeQueryString
-
-// const example1Populate = replaceFilterOperatorInPopulate(testPopulate1);
-
-// if (testPopulate2.populate) {
-//   const example2Populate = replaceFilterOperatorInPopulate(
-//     testPopulate2.populate
-//   );
-
-//   testPopulate2.populate = example2Populate;
-// }
-// console.log(example1Populate);
-
-// const updatedFilters = replaceFilterOperators(filters);
-// const testExample1 = replaceFilterOperators(example1);
-// const testExample2 = replaceFilterOperators(example2);
-// const testExample3 = replaceFilterOperators(example3);
+  // Copy to clipboard
+}
